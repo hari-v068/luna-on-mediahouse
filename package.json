@@ -1,0 +1,25 @@
+{
+  "name": "acp",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+  },
+  "packageManager": "pnpm@10.9.0",
+  "devDependencies": {
+    "@tsconfig/node-lts": "^22.0.1",
+    "@tsconfig/node-ts": "^23.6.1",
+    "@types/node": "^22.14.0",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "@virtuals-protocol/game": "^0.1.14",
+    "@virtuals-protocol/game-acp-plugin": "^0.1.18",
+    "@virtuals-protocol/game-twitter-plugin": "^0.1.8",
+    "dotenv": "^16.4.7",
+    "zod": "^3.24.2"
+  }
+}
