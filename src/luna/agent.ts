@@ -7,9 +7,6 @@ import { generateAvatar } from "./function";
 import { Store } from "./store";
 import { initiator } from "./worker";
 
-const logsDir = path.join(process.cwd(), "logs");
-if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir);
-
 export async function luna() {
   const store = new Store();
 
@@ -73,23 +70,48 @@ export async function luna() {
     },
   });
 
+  const logsDir = path.join(process.cwd(), `logs/${agent.name.toLowerCase()}`);
+  if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir);
+
   agent.setLogger((agent, message) => {
     if (message.startsWith("Agent State: ")) {
       try {
         const state = JSON.parse(message.split("Agent State: ")[1]);
         fs.writeFileSync(
-          path.join(logsDir, `${agent.name.toLowerCase()}.json`),
+          path.join(logsDir, `agent.json`),
           JSON.stringify(state, null, 2),
         );
       } catch (error) {
-        console.error(`Error saving state for ${agent.name}:`, error);
+        console.error(`Error saving agent state for ${agent.name}:`, error);
       }
-    } else if (
-      !message.startsWith("Action State: ") &&
-      !message.startsWith("Environment State: ")
-    ) {
+    } else if (message.startsWith("Environment State: ")) {
+      try {
+        const state = JSON.parse(message.split("Environment State: ")[1]);
+        fs.writeFileSync(
+          path.join(logsDir, `environment.json`),
+          JSON.stringify(state, null, 2),
+        );
+      } catch (error) {
+        console.error(
+          `Error saving environment state for ${agent.name}:`,
+          error,
+        );
+      }
+    } else if (message.startsWith("Action State: ")) {
+      try {
+        const state = JSON.parse(
+          message.split("Action State: ")[1].replace(/\.+$/, ""),
+        );
+        fs.writeFileSync(
+          path.join(logsDir, `action.json`),
+          JSON.stringify(state, null, 2),
+        );
+      } catch (error) {
+        console.error(`Error saving action state for ${agent.name}:`, error);
+      }
+    } else {
       fs.appendFileSync(
-        path.join(logsDir, `${agent.name.toLowerCase()}.log`),
+        path.join(logsDir, `agent.log`),
         `${new Date().toISOString()} - ${message}\n`,
       );
     }

@@ -3,7 +3,7 @@ import { JobRecord, State } from "./types";
 import fs from "fs";
 import path from "path";
 
-const stateFilePath = path.join(process.cwd(), "src/database/state.json");
+const stateFilePath = path.join(process.cwd(), "src/database/luna.db.json");
 
 type Domain = "User" | "Narrative" | "Avatar" | "Video" | "Meme" | "Token";
 
