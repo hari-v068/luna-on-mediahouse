@@ -25,11 +25,6 @@ export const generateAvatar = (acpPlugin: AcpPlugin) =>
     description: "Generate an avatar image and retrieve it after processing",
     args: [
       {
-        name: "sellerWalletAddress",
-        type: "string",
-        description: "The agent wallet address to coordinate with",
-      },
-      {
         name: "art_style",
         type: "string",
         description:
@@ -194,7 +189,7 @@ export const generateAvatar = (acpPlugin: AcpPlugin) =>
         }
 
         // Update the state with the generated avatar
-        await store.addJob(twitterJobId, "Avatar", {
+        await store.setJob(twitterJobId, "Avatar", {
           status: "COMPLETED",
           url: selectedImage.file_path,
           projectId: projectId,

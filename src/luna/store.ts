@@ -7,6 +7,18 @@ const stateFilePath = path.join(process.cwd(), "src/database/luna.db.json");
 
 type Domain = "User" | "Narrative" | "Avatar" | "Video" | "Meme" | "Token";
 
+interface CompletedJobData {
+  tokenName: string;
+  narrative: string;
+  goToMarketStrategy: string;
+  avatarMediaUrl: string;
+  avatarMintingUrl: string;
+  memeMediaUrl: string;
+  memeMintingUrl: string;
+  videoMediaUrl: string;
+  videoMintingUrl: string;
+}
+
 export class Store {
   private supabaseClient;
 
@@ -86,7 +98,7 @@ export class Store {
     }
   }
 
-  async addJob(jobId: string, domain: Domain, job: JobRecord): Promise<void> {
+  async setJob(jobId: string, domain: Domain, job: JobRecord): Promise<void> {
     const currentState = await this.readState();
     const updatedState = {
       ...currentState,
@@ -130,7 +142,7 @@ export class Store {
           narrativeValue.avatar_recommendations,
         );
 
-        await this.addJob(twitterJobId, "Narrative", {
+        await this.setJob(twitterJobId, "Narrative", {
           status: "COMPLETED",
           narrative: narrativeValue,
         });
@@ -155,7 +167,7 @@ export class Store {
       );
 
       if (videoUrl) {
-        await this.addJob(twitterJobId, "Video", {
+        await this.setJob(twitterJobId, "Video", {
           status: "COMPLETED",
           url: videoUrl.value,
           sellerWalletAddress: state[twitterJobId].Video.sellerWalletAddress,
@@ -181,13 +193,41 @@ export class Store {
       );
 
       if (memeUrl) {
-        await this.addJob(twitterJobId, "Meme", {
+        await this.setJob(twitterJobId, "Meme", {
           status: "COMPLETED",
           url: memeUrl.value,
           sellerWalletAddress: state[twitterJobId].Meme.sellerWalletAddress,
         });
       }
     }
+  }
+
+  private async pushCompletedJobToDatabase(
+    twitterJobId: string,
+    state: State,
+  ): Promise<void> {
+    const job = state[twitterJobId];
+    if (!job) return;
+
+    const completedJobData: CompletedJobData = {
+      tokenName: job.User.job_details.token_name,
+      narrative: job.Narrative.narrative.narrative,
+      goToMarketStrategy: job.Narrative.narrative.gtm_strategy,
+      avatarMediaUrl: job.Avatar.url,
+      avatarMintingUrl: job.Avatar.mintingUrl,
+      memeMediaUrl: job.Meme.url,
+      memeMintingUrl: job.Meme.mintingUrl,
+      videoMediaUrl: job.Video.url,
+      videoMintingUrl: job.Video.mintingUrl,
+    };
+
+    await this.supabaseClient
+      .from("agent_state")
+      .update({
+        twitter_completed_job: completedJobData,
+      })
+      .eq("twitter_job_id", twitterJobId)
+      .throwOnError();
   }
 
   async updateTokenFromAcp(acpState: any): Promise<void> {
@@ -211,7 +251,7 @@ export class Store {
       // Split the comma-separated URLs
       const [avatarUrl, videoUrl, memeUrl] = latestToken.value.split(",");
 
-      await this.addJob(twitterJobId, "Token", {
+      await this.setJob(twitterJobId, "Token", {
         status: "COMPLETED",
         token: {
           avatar_url: avatarUrl.trim(),
@@ -220,6 +260,43 @@ export class Store {
         },
         sellerWalletAddress: state[twitterJobId].Token.sellerWalletAddress,
       });
+
+      // Mark the User job as completed since this is the final step
+      await this.setJob(twitterJobId, "User", {
+        ...state[twitterJobId].User,
+        status: "COMPLETED",
+      });
+
+      // Push completed job data to database
+      await this.pushCompletedJobToDatabase(twitterJobId, state);
+    }
+  }
+
+  private async isAllJobsCompleted(
+    state: State,
+    twitterJobId: string,
+  ): Promise<boolean> {
+    const job = state[twitterJobId];
+    if (!job) return false;
+
+    const requiredDomains: Domain[] = [
+      "User",
+      "Narrative",
+      "Avatar",
+      "Video",
+      "Meme",
+      "Token",
+    ];
+    return requiredDomains.every(
+      (domain) => job[domain]?.status === "COMPLETED",
+    );
+  }
+
+  private async clearDatabase(): Promise<void> {
+    try {
+      await this.writeState({});
+    } catch (error) {
+      console.error("Error clearing database:", error);
     }
   }
 
@@ -276,6 +353,10 @@ export class Store {
           state[twitterJobId]?.Token?.status === "PENDING"
         ) {
           await this.updateTokenFromAcp(acpState);
+        }
+
+        if (await this.isAllJobsCompleted(state, twitterJobId)) {
+          await this.clearDatabase();
         }
       }
     }

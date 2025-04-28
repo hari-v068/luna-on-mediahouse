@@ -140,7 +140,7 @@ export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      store.addJob(twitterJobId, "Narrative", {
+      store.setJob(twitterJobId, "Narrative", {
         status: "PENDING",
         narrative: null,
       });
@@ -293,7 +293,7 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      store.addJob(twitterJobId, "Video", {
+      store.setJob(twitterJobId, "Video", {
         status: "PENDING",
         url: null,
       });
@@ -439,7 +439,7 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      store.addJob(twitterJobId, "Meme", {
+      store.setJob(twitterJobId, "Meme", {
         status: "PENDING",
         url: null,
       });
@@ -582,7 +582,7 @@ export const getToken = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      store.addJob(twitterJobId, "Token", {
+      store.setJob(twitterJobId, "Token", {
         status: "PENDING",
         token: null,
       });
