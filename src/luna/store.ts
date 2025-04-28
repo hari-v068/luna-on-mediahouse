@@ -97,31 +97,33 @@ export class Store {
     const state = await this.fetchAndUpdateActiveJob();
     const twitterJobId = Object.keys(state)[0];
 
-    const latestNarrative = acpState.inventory.acquired
-      .filter(
-        (item: { type: string; jobId: number; value: string }) =>
-          item.type === "text",
-      )
-      .reduce(
-        (
-          latest: { jobId: number; value: string },
-          current: { jobId: number; value: string },
-        ) => (current.jobId > latest.jobId ? current : latest),
-        acpState.inventory.acquired[0],
+    // Find the completed job that has token_name in its description
+    const completedNarrativeJob = acpState.jobs.completed.find(
+      (job: { desc: string }) => {
+        try {
+          const desc = JSON.parse(job.desc);
+          return (
+            desc.token_name === state[twitterJobId].User.job_details.token_name
+          );
+        } catch {
+          return false;
+        }
+      },
+    );
+
+    if (completedNarrativeJob) {
+      // Find the json for this specific job in inventory
+      const narrativeJson = acpState.inventory.acquired.find(
+        (item: { jobId: number; type: string }) =>
+          item.jobId === completedNarrativeJob.jobId && item.type === "json",
       );
 
-    if (latestNarrative) {
-      // Clean the JSON string before storing
-      const cleanedNarrative = latestNarrative.value
-        .replace(/\\"/g, '"')
-        .replace(/^"|"$/g, "")
-        .replace(/\\n/g, "\n");
-
-      await this.addJob(twitterJobId, "Narrative", {
-        status: "COMPLETED",
-        narrative: cleanedNarrative,
-        sellerWalletAddress: state[twitterJobId].Narrative.sellerWalletAddress,
-      });
+      if (narrativeJson) {
+        await this.addJob(twitterJobId, "Narrative", {
+          status: "COMPLETED",
+          narrative: JSON.parse(narrativeJson.value),
+        });
+      }
     }
   }
 
