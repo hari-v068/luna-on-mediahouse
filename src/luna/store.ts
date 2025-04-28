@@ -224,17 +224,20 @@ export class Store {
   }
 
   async getAgentState(acpPlugin?: any): Promise<{ twitter: State; acp: any }> {
-    // First check if we have any active jobs from Supabase that aren't in our state
-    const activeJob = await this.getActiveJobFromSupabase();
-    if (activeJob) {
-      await this.addNewJob(
-        activeJob.twitter_job_id,
-        activeJob.job_details,
-        activeJob.wallet_address,
-      );
+    const state = await this.readState();
+
+    // Only check Supabase if database is empty
+    if (!state || Object.keys(state).length === 0) {
+      const activeJob = await this.getActiveJobFromSupabase();
+      if (activeJob) {
+        await this.addNewJob(
+          activeJob.twitter_job_id,
+          activeJob.job_details,
+          activeJob.wallet_address,
+        );
+      }
     }
 
-    const state = await this.readState();
     const acpState = acpPlugin ? await acpPlugin.getAcpState() : {};
 
     if (acpPlugin) {

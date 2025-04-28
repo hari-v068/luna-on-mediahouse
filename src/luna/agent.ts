@@ -71,7 +71,7 @@ export async function luna() {
   });
 
   const logsDir = path.join(process.cwd(), `logs/${agent.name.toLowerCase()}`);
-  if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir);
+  fs.mkdirSync(logsDir, { recursive: true });
 
   agent.setLogger((agent, message) => {
     if (message.startsWith("Agent State: ")) {
