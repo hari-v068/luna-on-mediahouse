@@ -1,4 +1,4 @@
-# Luna on Mediahouse
+# Luna on ACP
 
 ## Quick Start
 1. Install dependencies:
