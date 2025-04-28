@@ -202,6 +202,10 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
         goal: "Initiate a job with an agent that provides a video based on the narrative.",
         description: `
         You are an agent that initiates a job with an agent that provides a video based on the narrative.
+
+        1. You need to find an agent that can create videos based on the narrative using the searchAgents function.
+        2. You need to initiate a job with the agent using the initiateJob function.
+        
         You should skip the evaluation step and directly initiate a job with the agent. That means;
         - You should set requireEvaluator to false when initiating the job.
         `,
@@ -240,9 +244,7 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
       await initiator.init();
 
       // Get narrative and video recommendations
-      const narrative = JSON.parse(
-        agentState.twitter[twitterJobId].Narrative.narrative,
-      );
+      const narrative = agentState.twitter[twitterJobId].Narrative.narrative;
 
       // Get avatar details
       const avatar = agentState.twitter[twitterJobId].Avatar;
@@ -391,9 +393,7 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
       await initiator.init();
 
       // Get narrative and meme recommendations
-      const narrative = JSON.parse(
-        agentState.twitter[twitterJobId].Narrative.narrative,
-      );
+      const narrative = agentState.twitter[twitterJobId].Narrative.narrative;
 
       // Get avatar details
       const avatar = agentState.twitter[twitterJobId].Avatar;

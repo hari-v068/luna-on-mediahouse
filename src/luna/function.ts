@@ -90,10 +90,8 @@ export const generateAvatar = (acpPlugin: AcpPlugin) =>
           );
         }
 
-        const narrative = JSON.parse(narrativeState.narrative);
-        const avatarRecommendations = JSON.parse(
-          narrative.avatar_recommendations,
-        );
+        const avatarRecommendations =
+          narrativeState.narrative.avatar_recommendations;
         const characterVisuals =
           avatarRecommendations.character_visuals.character1;
 

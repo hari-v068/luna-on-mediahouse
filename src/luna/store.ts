@@ -9,92 +9,97 @@ type Domain = "User" | "Narrative" | "Avatar" | "Video" | "Meme" | "Token";
 
 export class Store {
   private supabaseClient;
-  private state: State = {};
 
   constructor() {
     this.supabaseClient = createClient(
       process.env.SUPABASE_URL as string,
       process.env.SUPABASE_KEY as string,
     );
-    this.loadState();
   }
 
-  private loadState() {
+  private async readState(): Promise<State> {
     try {
       if (!fs.existsSync(stateFilePath)) {
         fs.writeFileSync(stateFilePath, JSON.stringify({}), "utf-8");
+        return {};
       }
       const stateData = fs.readFileSync(stateFilePath, "utf-8");
-      this.state = stateData.trim() === "" ? {} : JSON.parse(stateData);
+      return stateData.trim() === "" ? {} : JSON.parse(stateData);
     } catch (error) {
-      console.error("Error loading state:", error);
-      this.state = {};
+      console.error("Error reading state:", error);
+      return {};
     }
   }
 
-  private saveState() {
+  private async writeState(state: State): Promise<void> {
     try {
-      fs.writeFileSync(stateFilePath, JSON.stringify(this.state, null, 2));
+      fs.writeFileSync(stateFilePath, JSON.stringify(state, null, 2));
     } catch (error) {
-      console.error("Error saving state:", error);
+      console.error("Error writing state:", error);
     }
   }
 
-  async fetchAndUpdateActiveJob(): Promise<State> {
+  async getActiveJobFromSupabase(): Promise<{
+    twitter_job_id: string;
+    job_details: any;
+    wallet_address: string;
+  } | null> {
     try {
       const { data: activeJobDetails, error: activeJobDetailsError } =
         await this.supabaseClient.rpc("get_oldest_active_job");
 
       if (activeJobDetailsError) {
         console.error("Error fetching from Supabase:", activeJobDetailsError);
-        return this.state;
+        return null;
       }
 
-      if (!activeJobDetails) {
-        return this.state;
-      }
-
-      const jobId = activeJobDetails.twitter_job_id;
-
-      // Only create new state if it doesn't exist
-      if (!this.state[jobId]) {
-        const newUserJob: JobRecord = {
-          status: "PENDING",
-          job_details: activeJobDetails.job_details,
-          wallet_address: activeJobDetails.wallet_address,
-        };
-
-        this.state[jobId] = {
-          User: newUserJob,
-        };
-
-        this.saveState();
-      }
-
-      return this.state;
+      return activeJobDetails;
     } catch (error) {
-      console.error("Error in fetchAndUpdateActiveJob:", error);
-      return this.state;
+      console.error("Error in getActiveJobFromSupabase:", error);
+      return null;
+    }
+  }
+
+  async addNewJob(
+    jobId: string,
+    jobDetails: any,
+    walletAddress: string,
+  ): Promise<void> {
+    const currentState = await this.readState();
+
+    // Only add if it doesn't exist
+    if (!currentState[jobId]) {
+      const newUserJob: JobRecord = {
+        status: "PENDING",
+        job_details: jobDetails,
+        wallet_address: walletAddress,
+      };
+
+      const updatedState = {
+        ...currentState,
+        [jobId]: {
+          User: newUserJob,
+        },
+      };
+
+      await this.writeState(updatedState);
     }
   }
 
   async addJob(jobId: string, domain: Domain, job: JobRecord): Promise<void> {
-    const currentState = await this.fetchAndUpdateActiveJob();
-
-    // Update the state with the new job
-    this.state = {
+    const currentState = await this.readState();
+    const updatedState = {
       ...currentState,
       [jobId]: {
         ...currentState[jobId],
         [domain]: job,
       },
     };
-
-    this.saveState();
+    await this.writeState(updatedState);
   }
 
   async updateNarrativeFromAcp(acpState: any): Promise<void> {
-    const state = await this.fetchAndUpdateActiveJob();
+    const state = await this.readState();
     const twitterJobId = Object.keys(state)[0];
 
     // Find the completed job that has token_name in its description
@@ -119,16 +124,22 @@ export class Store {
       );
 
       if (narrativeJson) {
+        const narrativeValue = JSON.parse(narrativeJson.value);
+        // Parse the avatar_recommendations string into an object
+        narrativeValue.avatar_recommendations = JSON.parse(
+          narrativeValue.avatar_recommendations,
+        );
+
         await this.addJob(twitterJobId, "Narrative", {
           status: "COMPLETED",
-          narrative: JSON.parse(narrativeJson.value),
+          narrative: narrativeValue,
         });
       }
     }
   }
 
   async updateVideoFromAcp(acpState: any): Promise<void> {
-    const state = await this.fetchAndUpdateActiveJob();
+    const state = await this.readState();
     const twitterJobId = Object.keys(state)[0];
 
     // Find any completed video job by checking for the string
@@ -154,7 +165,7 @@ export class Store {
   }
 
   async updateMemeFromAcp(acpState: any): Promise<void> {
-    const state = await this.fetchAndUpdateActiveJob();
+    const state = await this.readState();
     const twitterJobId = Object.keys(state)[0];
 
     // Find any completed meme job by checking for the string
@@ -180,7 +191,7 @@ export class Store {
   }
 
   async updateTokenFromAcp(acpState: any): Promise<void> {
-    const state = await this.fetchAndUpdateActiveJob();
+    const state = await this.readState();
     const twitterJobId = Object.keys(state)[0];
 
     const latestToken = acpState.inventory.acquired
@@ -213,7 +224,17 @@ export class Store {
   }
 
   async getAgentState(acpPlugin?: any): Promise<{ twitter: State; acp: any }> {
-    const state = await this.fetchAndUpdateActiveJob();
+    // First check if we have any active jobs from Supabase that aren't in our state
+    const activeJob = await this.getActiveJobFromSupabase();
+    if (activeJob) {
+      await this.addNewJob(
+        activeJob.twitter_job_id,
+        activeJob.job_details,
+        activeJob.wallet_address,
+      );
+    }
+
+    const state = await this.readState();
     const acpState = acpPlugin ? await acpPlugin.getAcpState() : {};
 
     if (acpPlugin) {
@@ -257,16 +278,13 @@ export class Store {
     }
 
     return {
-      twitter: state,
+      twitter: await this.readState(),
       acp: acpState,
     };
   }
 
-  getState(): State {
-    return this.state;
-  }
-
-  getJob(jobId: string, domain: Domain): JobRecord | undefined {
-    return this.state[jobId]?.[domain];
+  async getJob(jobId: string, domain: Domain): Promise<JobRecord | undefined> {
+    const state = await this.readState();
+    return state[jobId]?.[domain];
   }
 }
