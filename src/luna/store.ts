@@ -58,18 +58,10 @@ export class Store {
 
       // Only create new state if it doesn't exist
       if (!this.state[jobId]) {
-        const cleanJobDetails = activeJobDetails.job_details
-          .replace(/\\n/g, "")
-          .replace(/\\"/g, '"')
-          .replace(/^"|"$/g, "");
-
-        const parsedJobDetails = JSON.parse(cleanJobDetails);
-        const { price, paid, wallet_address, ...jobDetails } = parsedJobDetails;
-
         const newUserJob: JobRecord = {
           status: "PENDING",
-          twitter_active_job: jobDetails,
-          wallet_address,
+          job_details: activeJobDetails.job_details,
+          wallet_address: activeJobDetails.wallet_address,
         };
 
         this.state[jobId] = {

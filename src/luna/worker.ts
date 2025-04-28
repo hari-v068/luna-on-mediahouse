@@ -107,7 +107,7 @@ export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
       await initiator.init();
 
       const twitterJobDetails =
-        agentState.twitter[twitterJobId].User.twitter_active_job;
+        agentState.twitter[twitterJobId].User.job_details;
       const serviceRequirements = JSON.stringify(twitterJobDetails);
 
       // Get current ACP state before initiating job
