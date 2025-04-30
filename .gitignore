@@ -9,3 +9,6 @@ node_modules/
 
 # app
 logs/
+
+# database
+src/database/luna.db.json
