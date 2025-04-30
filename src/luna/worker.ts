@@ -21,7 +21,7 @@ export const initiator = (acpPlugin: AcpPlugin, store: Store) => {
       getNarrative(acpPlugin, store),
       getVideo(acpPlugin, store),
       getMeme(acpPlugin, store),
-      getToken(acpPlugin, store),
+      getAsset(acpPlugin, store),
     ],
     getEnvironment: async () => {
       return acpPlugin.getAcpState();
@@ -550,16 +550,16 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
     },
   });
 
-export const getToken = (acpPlugin: AcpPlugin, store: Store) =>
+export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
   new GameFunction({
-    name: "get_token",
+    name: "get_asset",
     description:
-      "Initiate a job with an agent that can tokenize the generated content.",
+      "Initiate a job with an agent that can acquire an IP asset for the generated content.",
     args: [
       {
         name: "reasoning",
         type: "string",
-        description: "The reasoning for the tokenization",
+        description: "The reasoning for the asset acquisition",
       },
     ],
     executable: async (args) => {
@@ -587,21 +587,21 @@ export const getToken = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      // Check if token already exists
-      if (agentState.twitter[twitterJobId]?.Token) {
+      // Check if asset already exists
+      if (agentState.twitter[twitterJobId]?.Asset) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
-          "Token job already exists",
+          "Asset job already exists",
         );
       }
 
       const initiator = new GameAgent(env.GAME_API_KEY, {
         name: "Luna",
-        goal: "Initiate a job with an agent that can tokenize the generated content.",
+        goal: "Initiate a job with an agent that can acquire the IP asset for the generated content.",
         description: `
-        You are an agent that initiates a job with an agent that provides a token for the generated content.
+        You are an agent that initiates a job with an agent that provides an IP asset for the generated content.
 
-        1. Search for an agent that can tokenize content using the searchAgents function.
+        1. Search for an agent that can acquire IP assets using the searchAgents function. (TIP: keyword: "asset")
         2. Initiate a job with the agent using the initiateJob function.
 
         You should skip the evaluation step and directly initiate a job with the agent. That means;
@@ -679,9 +679,9 @@ export const getToken = (acpPlugin: AcpPlugin, store: Store) =>
       const user = agentState.twitter[twitterJobId].User;
 
       const serviceRequirements = JSON.stringify({
+        avatar_url: avatar.url,
         video_url: video.url,
         meme_url: meme.url,
-        avatar_url: avatar.url,
         user_wallet_address: user.wallet_address,
       });
 
@@ -692,7 +692,7 @@ export const getToken = (acpPlugin: AcpPlugin, store: Store) =>
       await initiator
         .getWorkerById("acp_worker")
         .runTask(
-          `Find an agent that can tokenize and initiate a job with that agent with the following serviceRequirements: ${serviceRequirements}`,
+          `Find an agent that can acquire an IP asset and initiate a job with that agent with the following serviceRequirements: ${serviceRequirements}`,
           {
             verbose: true,
           },
@@ -715,15 +715,17 @@ export const getToken = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      store.setJob(twitterJobId, "Token", {
+      store.setJob(twitterJobId, "Asset", {
         status: "PENDING",
-        token: null,
+        url: null,
       });
 
-      initiator.log(`${initiator.name} has initiated the tokenization job`);
+      initiator.log(
+        `${initiator.name} has initiated the asset acquisition job`,
+      );
       return new ExecutableGameFunctionResponse(
         ExecutableGameFunctionStatus.Done,
-        "TOKEN_JOB_INITIATED",
+        "ASSET_JOB_INITIATED",
       );
     },
   });

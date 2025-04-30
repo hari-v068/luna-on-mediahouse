@@ -5,7 +5,7 @@ import path from "path";
 
 const stateFilePath = path.join(process.cwd(), "src/database/luna.db.json");
 
-type Domain = "User" | "Narrative" | "Avatar" | "Video" | "Meme" | "Token";
+type Domain = "User" | "Narrative" | "Avatar" | "Video" | "Meme" | "Asset";
 
 interface CompletedJobData {
   tokenName: string;
@@ -214,11 +214,11 @@ export class Store {
       narrative: job.Narrative.narrative.narrative,
       goToMarketStrategy: job.Narrative.narrative.gtm_strategy,
       avatarMediaUrl: job.Avatar.url,
-      avatarMintingUrl: job.Avatar.mintingUrl,
+      avatarMintingUrl: job.Asset.url.avatar,
       memeMediaUrl: job.Meme.url,
-      memeMintingUrl: job.Meme.mintingUrl,
+      memeMintingUrl: job.Asset.url.meme,
       videoMediaUrl: job.Video.url,
-      videoMintingUrl: job.Video.mintingUrl,
+      videoMintingUrl: job.Asset.url.video,
     };
 
     await this.supabaseClient
@@ -230,45 +230,40 @@ export class Store {
       .throwOnError();
   }
 
-  async updateTokenFromAcp(acpState: any): Promise<void> {
+  async updateAssetFromAcp(acpState: any): Promise<void> {
     const state = await this.readState();
     const twitterJobId = Object.keys(state)[0];
 
-    const latestToken = acpState.inventory.acquired
-      .filter(
-        (item: { type: string; jobId: number; value: string }) =>
-          item.type === "url",
-      )
-      .reduce(
-        (
-          latest: { jobId: number; value: string },
-          current: { jobId: number; value: string },
-        ) => (current.jobId > latest.jobId ? current : latest),
-        acpState.inventory.acquired[0],
+    // Find any completed asset job by checking for the string
+    const completedAssetJob = acpState.jobs.completed.find(
+      (job: { desc: string }) => job.desc.includes("user_wallet_address"),
+    );
+
+    if (completedAssetJob) {
+      // Find the JSON for this specific job in inventory
+      const assetJson = acpState.inventory.acquired.find(
+        (item: { jobId: number; type: string }) =>
+          item.jobId === completedAssetJob.jobId && item.type === "json",
       );
 
-    if (latestToken) {
-      // Split the comma-separated URLs
-      const [avatarUrl, videoUrl, memeUrl] = latestToken.value.split(",");
+      if (assetJson) {
+        const assetValue = JSON.parse(assetJson.value);
 
-      await this.setJob(twitterJobId, "Token", {
-        status: "COMPLETED",
-        token: {
-          avatar_url: avatarUrl.trim(),
-          video_url: videoUrl.trim(),
-          meme_url: memeUrl.trim(),
-        },
-        sellerWalletAddress: state[twitterJobId].Token.sellerWalletAddress,
-      });
+        await this.setJob(twitterJobId, "Asset", {
+          status: "COMPLETED",
+          url: {
+            avatar: assetValue.avatar,
+            video: assetValue.video,
+            meme: assetValue.meme,
+          },
+        });
 
-      // Mark the User job as completed since this is the final step
-      await this.setJob(twitterJobId, "User", {
-        ...state[twitterJobId].User,
-        status: "COMPLETED",
-      });
-
-      // Push completed job data to database
-      await this.pushCompletedJobToDatabase(twitterJobId, state);
+        // Mark the User job as completed since this is the final step
+        await this.setJob(twitterJobId, "User", {
+          ...state[twitterJobId].User,
+          status: "COMPLETED",
+        });
+      }
     }
   }
 
@@ -285,7 +280,7 @@ export class Store {
       "Avatar",
       "Video",
       "Meme",
-      "Token",
+      "Asset",
     ];
     return requiredDomains.every(
       (domain) => job[domain]?.status === "COMPLETED",
@@ -294,6 +289,11 @@ export class Store {
 
   private async clearDatabase(): Promise<void> {
     try {
+      console.log("Clearing database in 5 seconds...");
+      for (let i = 5; i > 0; i--) {
+        console.log(`${i}...`);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
       await this.writeState({});
     } catch (error) {
       console.error("Error clearing database:", error);
@@ -350,12 +350,13 @@ export class Store {
           state[twitterJobId]?.Avatar?.status === "COMPLETED" &&
           state[twitterJobId]?.Video?.status === "COMPLETED" &&
           state[twitterJobId]?.Meme?.status === "COMPLETED" &&
-          state[twitterJobId]?.Token?.status === "PENDING"
+          state[twitterJobId]?.Asset?.status === "PENDING"
         ) {
-          await this.updateTokenFromAcp(acpState);
+          await this.updateAssetFromAcp(acpState);
         }
 
         if (await this.isAllJobsCompleted(state, twitterJobId)) {
+          await this.pushCompletedJobToDatabase(twitterJobId, state);
           await this.clearDatabase();
         }
       }

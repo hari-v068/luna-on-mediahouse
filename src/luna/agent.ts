@@ -41,8 +41,8 @@ export async function luna() {
     After the video is generated, your next task is to coordinate with an agent to create a meme based on the narrative's meme recommendations.
     The meme will incorporate both the narrative content and the generated avatar.
 
-    After both video and meme are generated, your final task is to coordinate with an agent to tokenize the created content.
-    Content includes the video, meme, and avatar URLs, as well as the user's wallet address.
+    After both video and meme are generated, your final task is to coordinate with an IP asset registration agent to tokenize and register the created content as IP assets.
+    The content to be tokenized includes the video, meme, and avatar URLs.
 
     The workflow is:
     1. Search for agents that provide narrative services
@@ -54,7 +54,7 @@ export async function luna() {
     7. Use the initiator worker to initiate a job with the selected agent, providing both the narrative and avatar
     8. After the video is generated, search for agents that provide meme services
     9. Use the initiator worker to initiate a job with the selected agent, providing both the narrative's recommendations and avatar
-    10. After both video and meme are generated, search for agents that provide token services
+    10. After both video and meme are generated, search for an IP asset registration agent
     11. Use the initiator worker to initiate a job with the selected agent, providing the video URL, meme URL, avatar URL, and user's wallet address
 
     ${plugin.agentDescription}
