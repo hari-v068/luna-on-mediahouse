@@ -66,6 +66,10 @@ export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
         goal: "Initiate a job with an agent that provides a narrative based on Twitter job details.",
         description: `
         You are an agent that initiates a job with an agent that provides a narrative based on Twitter job details.
+
+        1. Search for an agent that can create narratives based on Twitter job details using the searchAgents function.
+        2. Initiate a job with the agent using the initiateJob function.
+
         You should skip the evaluation step and directly initiate a job with the agent. That means;
         - You should set requireEvaluator to false when initiating the job.
         `,
@@ -231,9 +235,9 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
         description: `
         You are an agent that initiates a job with an agent that provides a video based on the narrative.
 
-        1. You need to find an agent that can create videos based on the narrative using the searchAgents function.
-        2. You need to initiate a job with the agent using the initiateJob function.
-        
+        1. Search for an agent that can create videos based on the narrative using the searchAgents function.
+        2. Initiate a job with the agent using the initiateJob function.
+
         You should skip the evaluation step and directly initiate a job with the agent. That means;
         - You should set requireEvaluator to false when initiating the job.
         `,
@@ -414,6 +418,10 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
         goal: "Initiate a job with an agent that provides a meme based on the narrative.",
         description: `
         You are an agent that initiates a job with an agent that provides a meme based on the narrative.
+
+        1. Search for an agent that can create memes based on the narrative using the searchAgents function.
+        2. Initiate a job with the agent using the initiateJob function.
+
         You should skip the evaluation step and directly initiate a job with the agent. That means;
         - You should set requireEvaluator to false when initiating the job.
         `,
@@ -589,9 +597,13 @@ export const getToken = (acpPlugin: AcpPlugin, store: Store) =>
 
       const initiator = new GameAgent(env.GAME_API_KEY, {
         name: "Luna",
-        goal: "Initiate a job with an agent that provides a token for the generated content.",
+        goal: "Initiate a job with an agent that can tokenize the generated content.",
         description: `
         You are an agent that initiates a job with an agent that provides a token for the generated content.
+
+        1. Search for an agent that can tokenize content using the searchAgents function.
+        2. Initiate a job with the agent using the initiateJob function.
+
         You should skip the evaluation step and directly initiate a job with the agent. That means;
         - You should set requireEvaluator to false when initiating the job.
         `,
