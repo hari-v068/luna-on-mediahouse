@@ -17,8 +17,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
     "@virtuals-protocol/game": "^0.1.14",
-    "@virtuals-protocol/game-acp-plugin": "^0.1.18",
-    "@virtuals-protocol/game-twitter-plugin": "^0.1.8",
+    "@virtuals-protocol/game-acp-plugin": "^0.1.22",
     "dotenv": "^16.4.7",
     "zod": "^3.24.2"
   }
