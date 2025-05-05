@@ -149,7 +149,7 @@ export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
       await initiator
         .getWorkerById("acp_worker")
         .runTask(
-          `Find an agent that can create narratives and initiate a job with that agent with the following serviceRequirements: ${serviceRequirements}`,
+          `Find an agent that can create narratives and initiate a job with that agent (Acolyt) with the following serviceRequirements: ${serviceRequirements}`,
           {
             verbose: true,
           },
@@ -175,6 +175,7 @@ export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
       store.setJob(twitterJobId, "Narrative", {
         status: "PENDING",
         narrative: null,
+        acpJobId: newJob.jobId,
       });
 
       initiator.log(`${initiator.name} has initiated the narrative job`);
@@ -333,7 +334,7 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
       await initiator
         .getWorkerById("acp_worker")
         .runTask(
-          `Find an agent that can create videos and initiate a job with that agent with the following serviceRequirements: ${serviceRequirements}`,
+          `Find an agent that can create videos and initiate a job with that agent (Steven SpAielberg) with the following serviceRequirements which consists of narrative, video recommendations, avatar URL and avatar project ID: ${serviceRequirements}`,
           {
             verbose: true,
           },
@@ -359,6 +360,7 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
       store.setJob(twitterJobId, "Video", {
         status: "PENDING",
         url: null,
+        acpJobId: newJob.jobId,
       });
 
       initiator.log(`${initiator.name} has initiated the video job`);
@@ -514,7 +516,7 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
       await initiator
         .getWorkerById("acp_worker")
         .runTask(
-          `Find an agent that can create memes and initiate a job with that agent with the following serviceRequirements: ${serviceRequirements}`,
+          `Find an agent that can create memes and initiate a job with that agent (MAGE by Alphakek AI) with the following serviceRequirements which consists of meme recommendations, avatar URL: ${serviceRequirements}`,
           {
             verbose: true,
           },
@@ -540,6 +542,7 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
       store.setJob(twitterJobId, "Meme", {
         status: "PENDING",
         url: null,
+        acpJobId: newJob.jobId,
       });
 
       initiator.log(`${initiator.name} has initiated the meme job`);
@@ -692,7 +695,7 @@ export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
       await initiator
         .getWorkerById("acp_worker")
         .runTask(
-          `Find an agent that can acquire an IP asset and initiate a job with that agent with the following serviceRequirements: ${serviceRequirements}`,
+          `Find an agent that can acquire an IP asset and initiate a job with that agent (DaVinci) with the following serviceRequirements: ${serviceRequirements}`,
           {
             verbose: true,
           },
@@ -718,6 +721,7 @@ export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
       store.setJob(twitterJobId, "Asset", {
         status: "PENDING",
         url: null,
+        acpJobId: newJob.jobId,
       });
 
       initiator.log(

@@ -114,18 +114,10 @@ export class Store {
     const state = await this.readState();
     const twitterJobId = Object.keys(state)[0];
 
-    // Find the completed job that has token_name in its description
+    // Find the completed job that matches our stored ACP job ID
     const completedNarrativeJob = acpState.jobs.completed.find(
-      (job: { desc: string }) => {
-        try {
-          const desc = JSON.parse(job.desc);
-          return (
-            desc.token_name === state[twitterJobId].User.job_details.token_name
-          );
-        } catch {
-          return false;
-        }
-      },
+      (job: { jobId: number }) =>
+        job.jobId === state[twitterJobId].Narrative.acpJobId,
     );
 
     if (completedNarrativeJob) {
@@ -154,9 +146,10 @@ export class Store {
     const state = await this.readState();
     const twitterJobId = Object.keys(state)[0];
 
-    // Find any completed video job by checking for the string
+    // Find the completed job that matches our stored ACP job ID
     const completedVideoJob = acpState.jobs.completed.find(
-      (job: { desc: string }) => job.desc.includes("video_recommendations"),
+      (job: { jobId: number }) =>
+        job.jobId === state[twitterJobId].Video.acpJobId,
     );
 
     if (completedVideoJob) {
@@ -170,7 +163,6 @@ export class Store {
         await this.setJob(twitterJobId, "Video", {
           status: "COMPLETED",
           url: videoUrl.value,
-          sellerWalletAddress: state[twitterJobId].Video.sellerWalletAddress,
         });
       }
     }
@@ -180,9 +172,10 @@ export class Store {
     const state = await this.readState();
     const twitterJobId = Object.keys(state)[0];
 
-    // Find any completed meme job by checking for the string
+    // Find the completed job that matches our stored ACP job ID
     const completedMemeJob = acpState.jobs.completed.find(
-      (job: { desc: string }) => job.desc.includes("meme_recommendations"),
+      (job: { jobId: number }) =>
+        job.jobId === state[twitterJobId].Meme.acpJobId,
     );
 
     if (completedMemeJob) {
@@ -196,7 +189,44 @@ export class Store {
         await this.setJob(twitterJobId, "Meme", {
           status: "COMPLETED",
           url: memeUrl.value,
-          sellerWalletAddress: state[twitterJobId].Meme.sellerWalletAddress,
+        });
+      }
+    }
+  }
+
+  async updateAssetFromAcp(acpState: any): Promise<void> {
+    const state = await this.readState();
+    const twitterJobId = Object.keys(state)[0];
+
+    // Find the completed job that matches our stored ACP job ID
+    const completedAssetJob = acpState.jobs.completed.find(
+      (job: { jobId: number }) =>
+        job.jobId === state[twitterJobId].Asset.acpJobId,
+    );
+
+    if (completedAssetJob) {
+      // Find the JSON for this specific job in inventory
+      const assetJson = acpState.inventory.acquired.find(
+        (item: { jobId: number; type: string }) =>
+          item.jobId === completedAssetJob.jobId && item.type === "json",
+      );
+
+      if (assetJson) {
+        const assetValue = JSON.parse(assetJson.value);
+
+        await this.setJob(twitterJobId, "Asset", {
+          status: "COMPLETED",
+          url: {
+            avatar: assetValue.avatar,
+            video: assetValue.video,
+            meme: assetValue.meme,
+          },
+        });
+
+        // Mark the User job as completed since this is the final step
+        await this.setJob(twitterJobId, "User", {
+          ...state[twitterJobId].User,
+          status: "COMPLETED",
         });
       }
     }
@@ -230,43 +260,6 @@ export class Store {
       .throwOnError();
   }
 
-  async updateAssetFromAcp(acpState: any): Promise<void> {
-    const state = await this.readState();
-    const twitterJobId = Object.keys(state)[0];
-
-    // Find any completed asset job by checking for the string
-    const completedAssetJob = acpState.jobs.completed.find(
-      (job: { desc: string }) => job.desc.includes("user_wallet_address"),
-    );
-
-    if (completedAssetJob) {
-      // Find the JSON for this specific job in inventory
-      const assetJson = acpState.inventory.acquired.find(
-        (item: { jobId: number; type: string }) =>
-          item.jobId === completedAssetJob.jobId && item.type === "json",
-      );
-
-      if (assetJson) {
-        const assetValue = JSON.parse(assetJson.value);
-
-        await this.setJob(twitterJobId, "Asset", {
-          status: "COMPLETED",
-          url: {
-            avatar: assetValue.avatar,
-            video: assetValue.video,
-            meme: assetValue.meme,
-          },
-        });
-
-        // Mark the User job as completed since this is the final step
-        await this.setJob(twitterJobId, "User", {
-          ...state[twitterJobId].User,
-          status: "COMPLETED",
-        });
-      }
-    }
-  }
-
   private async isAllJobsCompleted(
     state: State,
     twitterJobId: string,
@@ -289,9 +282,9 @@ export class Store {
 
   private async clearDatabase(): Promise<void> {
     try {
-      console.log("Clearing database in 5 seconds...");
+      console.log("CLEARING DATABASE");
       for (let i = 5; i > 0; i--) {
-        console.log(`${i}...`);
+        console.log(`${i}`);
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
       await this.writeState({});
