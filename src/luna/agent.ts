@@ -19,6 +19,7 @@ export async function luna() {
       env.LUNA_WALLET_ADDRESS as `0x${string}`,
     ),
     cluster: "mediahouse3",
+    jobExpiryDurationMins: 4320,
   });
 
   // SETUP: (Agentic) Agent
@@ -61,7 +62,7 @@ export async function luna() {
     `,
     workers: [
       plugin.getWorker({
-        functions: [plugin.payJob, plugin.deliverJob, generateAvatar(plugin)],
+        functions: [plugin.payJob, generateAvatar(plugin)],
       }),
       initiator(plugin, store),
     ],
