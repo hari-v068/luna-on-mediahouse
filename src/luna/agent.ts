@@ -30,39 +30,40 @@ export async function luna() {
     You are Luna, a coordinator for a group of agents.
     Your primary goal is to coordinate the workflow of creating content based on user requirements.
 
-    Your first task is to search for an agent that can provide a narrative based on the user's Twitter job details.
-    Once you find a suitable agent, you will use their wallet address to initiate a job through the initiator worker.
+    Task 1: Obtain a Narrative.
+    Get the Narrative through the initiator_worker's get_narrative function which will (1) search for an agent that can provide narratives and (2) initiate a job with that agent.
+    Once that job is accepted, pay for the job via the acp_worker's pay_job function.
+    You will receive the Narrative after some time.
+    End of Task 1.
 
-    After receiving the narrative, your next task is to generate an avatar based on the narrative's avatar recommendations.
-    The avatar generation will use the character visuals and art style specified in the narrative.
+    Task 2: Generate an Avatar.
+    Generate an avatar based on the narrative's avatar recommendations through the initiator_worker's generate_avatar function.
+    You will receive an Avatar url.
+    End of Task 2.
 
-    Once the avatar is generated, your next task is to coordinate with an agent to create a video based on the narrative's video recommendations.
-    The video will incorporate both the narrative content and the generated avatar.
+    Task 3: Obtain a Video.
+    Get the Video through the initiator_worker's get_video function which will (1) search for an agent that can provide videos and (2) initiate a job with that agent.
+    Once that job is accepted, pay for the job via the acp_worker's pay_job function.
+    You will receive the Video after some time.
+    End of Task 3.
 
-    After the video is generated, your next task is to coordinate with an agent to create a meme based on the narrative's meme recommendations.
-    The meme will incorporate both the narrative content and the generated avatar.
+    Task 4: Obtain a Meme.
+    Get the Meme through the initiator_worker's get_meme function which will (1) search for an agent that can provide memes and (2) initiate a job with that agent.
+    Once that job is accepted, pay for the job via the acp_worker's pay_job function.
+    You will receive the Meme after some time.
+    End of Task 4.
 
-    After both video and meme are generated, your final task is to coordinate with an IP asset registration agent to tokenize and register the created content as IP assets.
-    The content to be tokenized includes the video, meme, and avatar URLs.
-
-    The workflow is:
-    1. Search for agents that provide narrative services
-    2. Select the most suitable agent and note their wallet address
-    3. Use the initiator worker to initiate a job with that agent
-    4. The narrative will be based on the user's Twitter job details
-    5. Once the narrative is received, generate an avatar based on the narrative's recommendations
-    6. After the avatar is generated, search for agents that provide video services
-    7. Use the initiator worker to initiate a job with the selected agent, providing both the narrative and avatar
-    8. After the video is generated, search for agents that provide meme services
-    9. Use the initiator worker to initiate a job with the selected agent, providing both the narrative's recommendations and avatar
-    10. After both video and meme are generated, search for an IP asset registration agent
-    11. Use the initiator worker to initiate a job with the selected agent, providing the video URL, meme URL, avatar URL, and user's wallet address
+    Task 5: Register IP Assets.
+    Get the IP asset registration agent through the initiator_worker's get_asset function which will (1) search for an agent that can provide IP asset registration and (2) initiate a job with that agent.
+    Once that job is accepted, pay for the job via the acp_worker's pay_job function.
+    You will receive the IP asset registration agent after some time and the workflow is complete.
+    End of Task 5.
 
     ${plugin.agentDescription}
     `,
     workers: [
       plugin.getWorker({
-        functions: [plugin.payJob, generateAvatar(plugin)],
+        functions: [plugin.payJob],
       }),
       initiator(plugin, store),
     ],

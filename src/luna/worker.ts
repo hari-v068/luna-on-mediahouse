@@ -10,6 +10,7 @@ import AcpPlugin from "@virtuals-protocol/game-acp-plugin";
 import { Store } from "./store";
 import path from "path";
 import fs from "fs";
+import { generateAvatar } from "./function";
 
 export const initiator = (acpPlugin: AcpPlugin, store: Store) => {
   return new GameWorker({
@@ -19,6 +20,7 @@ export const initiator = (acpPlugin: AcpPlugin, store: Store) => {
       "A worker that initiates a job with an agent in the respective domain that's being handled.",
     functions: [
       getNarrative(acpPlugin, store),
+      generateAvatar(acpPlugin),
       getVideo(acpPlugin, store),
       getMeme(acpPlugin, store),
       getAsset(acpPlugin, store),
@@ -32,8 +34,7 @@ export const initiator = (acpPlugin: AcpPlugin, store: Store) => {
 export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
   new GameFunction({
     name: "get_narrative",
-    description:
-      "Initiate a job with an agent that provides a narrative based on Twitter job details.",
+    description: "Initiate a job with an agent that provides a narrative.",
     args: [
       {
         name: "reasoning",
@@ -42,11 +43,9 @@ export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
       },
     ],
     executable: async (args) => {
-      // Check if we can run this job
       const agentState = await store.getAgentState(acpPlugin);
       const twitterJobId = Object.keys(agentState.twitter)[0];
 
-      // Check if we have a user job
       if (!twitterJobId || !agentState.twitter[twitterJobId]?.User) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
@@ -54,11 +53,19 @@ export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      if (agentState.twitter[twitterJobId]?.Narrative) {
-        return new ExecutableGameFunctionResponse(
-          ExecutableGameFunctionStatus.Failed,
-          "Narrative job already exists",
-        );
+      const narrativeJob = agentState.twitter[twitterJobId]?.Narrative;
+      if (narrativeJob) {
+        if (narrativeJob.status === "PENDING") {
+          return new ExecutableGameFunctionResponse(
+            ExecutableGameFunctionStatus.Failed,
+            "Narrative job is already pending",
+          );
+        } else if (narrativeJob.status === "COMPLETED") {
+          return new ExecutableGameFunctionResponse(
+            ExecutableGameFunctionStatus.Failed,
+            "Narrative job is already completed",
+          );
+        }
       }
 
       const initiator = new GameAgent(env.GAME_API_KEY, {
@@ -142,24 +149,24 @@ export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
         agentState.twitter[twitterJobId].User.job_details;
       const serviceRequirements = JSON.stringify(twitterJobDetails);
 
-      // Get current ACP state before initiating job
       const currentAcpState = await acpPlugin.getAcpState();
       const currentActiveJobs = currentAcpState.jobs.active.asABuyer || [];
 
       await initiator
         .getWorkerById("acp_worker")
         .runTask(
-          `Find an agent that can create narratives and initiate a job with that agent (Acolyt) with the following serviceRequirements: ${serviceRequirements}`,
+          `Find an agent that can create narratives` +
+            `and initiate a job with that agent (Acolyt)` +
+            `with requireEvaluator set to true and the evaluatorKeyword set to "evaluator"` +
+            `with the following serviceRequirements in valid JSON format: ${serviceRequirements}`,
           {
             verbose: true,
           },
         );
 
-      // Get updated ACP state after job initiation attempt
       const updatedAcpState = await acpPlugin.getAcpState();
       const updatedActiveJobs = updatedAcpState.jobs.active.asABuyer || [];
 
-      // Verify if new job was created by comparing job lists
       const newJob = updatedActiveJobs.find(
         (job) =>
           !currentActiveJobs.some((oldJob) => oldJob.jobId === job.jobId),
@@ -199,11 +206,9 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
       },
     ],
     executable: async (args) => {
-      // Check if we can run this job
       const agentState = await store.getAgentState(acpPlugin);
       const twitterJobId = Object.keys(agentState.twitter)[0];
 
-      // Check if we have a user job
       if (!twitterJobId || !agentState.twitter[twitterJobId]?.User) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
@@ -211,7 +216,6 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      // Check if we have a completed avatar and narrative
       if (
         agentState.twitter[twitterJobId]?.Avatar?.status !== "COMPLETED" ||
         agentState.twitter[twitterJobId]?.Narrative?.status !== "COMPLETED"
@@ -222,12 +226,19 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      // Check if video already exists
-      if (agentState.twitter[twitterJobId]?.Video) {
-        return new ExecutableGameFunctionResponse(
-          ExecutableGameFunctionStatus.Failed,
-          "Video job already exists",
-        );
+      const videoJob = agentState.twitter[twitterJobId]?.Video;
+      if (videoJob) {
+        if (videoJob.status === "PENDING") {
+          return new ExecutableGameFunctionResponse(
+            ExecutableGameFunctionStatus.Failed,
+            "Video job is already pending",
+          );
+        } else if (videoJob.status === "COMPLETED") {
+          return new ExecutableGameFunctionResponse(
+            ExecutableGameFunctionStatus.Failed,
+            "Video job is already completed",
+          );
+        }
       }
 
       const initiator = new GameAgent(env.GAME_API_KEY, {
@@ -307,12 +318,9 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
 
       await initiator.init();
 
-      // Get narrative and video recommendations
       const narrative = agentState.twitter[twitterJobId].Narrative.narrative;
 
-      // Get avatar details
       const avatar = agentState.twitter[twitterJobId].Avatar;
-
       if (!avatar || avatar.status !== "COMPLETED") {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
@@ -327,24 +335,25 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
         avatar_project_id: avatar.projectId,
       });
 
-      // Get current ACP state before initiating job
       const currentAcpState = await acpPlugin.getAcpState();
       const currentActiveJobs = currentAcpState.jobs.active.asABuyer || [];
 
       await initiator
         .getWorkerById("acp_worker")
         .runTask(
-          `Find an agent that can create videos and initiate a job with that agent (Steven SpAielberg) with the following serviceRequirements which consists of narrative, video recommendations, avatar URL and avatar project ID: ${serviceRequirements}`,
+          `Find an agent that can create videos` +
+            `and initiate a job with that agent (Steven SpAielberg)` +
+            `with requireEvaluator set to true and the evaluatorKeyword set to "evaluator"` +
+            `with the following serviceRequirements in valid JSON format which consists of` +
+            `narrative, video recommendations, avatar URL and avatar project ID: ${serviceRequirements}`,
           {
             verbose: true,
           },
         );
 
-      // Get updated ACP state after job initiation attempt
       const updatedAcpState = await acpPlugin.getAcpState();
       const updatedActiveJobs = updatedAcpState.jobs.active.asABuyer || [];
 
-      // Verify if new job was created by comparing job lists
       const newJob = updatedActiveJobs.find(
         (job) =>
           !currentActiveJobs.some((oldJob) => oldJob.jobId === job.jobId),
@@ -384,11 +393,9 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
       },
     ],
     executable: async (args) => {
-      // Check if we can run this job
       const agentState = await store.getAgentState(acpPlugin);
       const twitterJobId = Object.keys(agentState.twitter)[0];
 
-      // Check if we have a user job
       if (!twitterJobId || !agentState.twitter[twitterJobId]?.User) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
@@ -396,7 +403,6 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      // Check if we have a completed avatar and narrative
       if (
         agentState.twitter[twitterJobId]?.Avatar?.status !== "COMPLETED" ||
         agentState.twitter[twitterJobId]?.Narrative?.status !== "COMPLETED"
@@ -407,12 +413,19 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      // Check if meme already exists
-      if (agentState.twitter[twitterJobId]?.Meme) {
-        return new ExecutableGameFunctionResponse(
-          ExecutableGameFunctionStatus.Failed,
-          "Meme job already exists",
-        );
+      const memeJob = agentState.twitter[twitterJobId]?.Meme;
+      if (memeJob) {
+        if (memeJob.status === "PENDING") {
+          return new ExecutableGameFunctionResponse(
+            ExecutableGameFunctionStatus.Failed,
+            "Meme job is already pending",
+          );
+        } else if (memeJob.status === "COMPLETED") {
+          return new ExecutableGameFunctionResponse(
+            ExecutableGameFunctionStatus.Failed,
+            "Meme job is already completed",
+          );
+        }
       }
 
       const initiator = new GameAgent(env.GAME_API_KEY, {
@@ -492,10 +505,8 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
 
       await initiator.init();
 
-      // Get narrative and meme recommendations
       const narrative = agentState.twitter[twitterJobId].Narrative.narrative;
 
-      // Get avatar details
       const avatar = agentState.twitter[twitterJobId].Avatar;
       if (!avatar || avatar.status !== "COMPLETED") {
         return new ExecutableGameFunctionResponse(
@@ -507,26 +518,28 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
       const serviceRequirements = JSON.stringify({
         meme_recommendations: narrative.meme_recommendations,
         avatar_url: avatar.url,
+        avatar_project_id: avatar.projectId,
       });
 
-      // Get current ACP state before initiating job
       const currentAcpState = await acpPlugin.getAcpState();
       const currentActiveJobs = currentAcpState.jobs.active.asABuyer || [];
 
       await initiator
         .getWorkerById("acp_worker")
         .runTask(
-          `Find an agent that can create memes and initiate a job with that agent (MAGE by Alphakek AI) with the following serviceRequirements which consists of meme recommendations, avatar URL: ${serviceRequirements}`,
+          `Find an agent that can create memes` +
+            `and initiate a job with that agent (MAGE by Alphakek AI)` +
+            `with requireEvaluator set to true and the evaluatorKeyword set to "evaluator"` +
+            `with the following serviceRequirements in valid JSON format which consists of` +
+            `meme recommendations, avatar URL and avatar project ID: ${serviceRequirements}`,
           {
             verbose: true,
           },
         );
 
-      // Get updated ACP state after job initiation attempt
       const updatedAcpState = await acpPlugin.getAcpState();
       const updatedActiveJobs = updatedAcpState.jobs.active.asABuyer || [];
 
-      // Verify if new job was created by comparing job lists
       const newJob = updatedActiveJobs.find(
         (job) =>
           !currentActiveJobs.some((oldJob) => oldJob.jobId === job.jobId),
@@ -566,11 +579,9 @@ export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
       },
     ],
     executable: async (args) => {
-      // Check if we can run this job
       const agentState = await store.getAgentState(acpPlugin);
       const twitterJobId = Object.keys(agentState.twitter)[0];
 
-      // Check if we have a user job
       if (!twitterJobId || !agentState.twitter[twitterJobId]?.User) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
@@ -578,7 +589,6 @@ export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      // Check if we have completed avatar, video and meme
       if (
         agentState.twitter[twitterJobId]?.Avatar?.status !== "COMPLETED" ||
         agentState.twitter[twitterJobId]?.Video?.status !== "COMPLETED" ||
@@ -590,12 +600,19 @@ export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      // Check if asset already exists
-      if (agentState.twitter[twitterJobId]?.Asset) {
-        return new ExecutableGameFunctionResponse(
-          ExecutableGameFunctionStatus.Failed,
-          "Asset job already exists",
-        );
+      const assetJob = agentState.twitter[twitterJobId]?.Asset;
+      if (assetJob) {
+        if (assetJob.status === "PENDING") {
+          return new ExecutableGameFunctionResponse(
+            ExecutableGameFunctionStatus.Failed,
+            "Asset job is already pending",
+          );
+        } else if (assetJob.status === "COMPLETED") {
+          return new ExecutableGameFunctionResponse(
+            ExecutableGameFunctionStatus.Failed,
+            "Asset job is already completed",
+          );
+        }
       }
 
       const initiator = new GameAgent(env.GAME_API_KEY, {
@@ -675,7 +692,6 @@ export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
 
       await initiator.init();
 
-      // Get content details
       const video = agentState.twitter[twitterJobId].Video;
       const meme = agentState.twitter[twitterJobId].Meme;
       const avatar = agentState.twitter[twitterJobId].Avatar;
@@ -688,24 +704,24 @@ export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
         user_wallet_address: user.wallet_address,
       });
 
-      // Get current ACP state before initiating job
       const currentAcpState = await acpPlugin.getAcpState();
       const currentActiveJobs = currentAcpState.jobs.active.asABuyer || [];
 
       await initiator
         .getWorkerById("acp_worker")
         .runTask(
-          `Find an agent that can acquire an IP asset and initiate a job with that agent (DaVinci) with the following serviceRequirements: ${serviceRequirements}`,
+          `Find an agent that can acquire an IP asset` +
+            `and initiate a job with that agent (DaVinci)` +
+            `with requireEvaluator set to true and the evaluatorKeyword set to "evaluator"` +
+            `with the following serviceRequirements in valid JSON format: ${serviceRequirements}`,
           {
             verbose: true,
           },
         );
 
-      // Get updated ACP state after job initiation attempt
       const updatedAcpState = await acpPlugin.getAcpState();
       const updatedActiveJobs = updatedAcpState.jobs.active.asABuyer || [];
 
-      // Verify if new job was created by comparing job lists
       const newJob = updatedActiveJobs.find(
         (job) =>
           !currentActiveJobs.some((oldJob) => oldJob.jobId === job.jobId),
