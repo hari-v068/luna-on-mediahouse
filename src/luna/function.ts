@@ -44,32 +44,32 @@ export const generateAvatar = (acpPlugin: AcpPlugin) =>
 
         const store = new Store();
         const agentState = await store.getAgentState(acpPlugin);
-        const twitterJobId = Object.keys(agentState.twitter)[0];
+        const projectId = Object.keys(agentState.project)[0];
 
-        if (!twitterJobId || !agentState.twitter[twitterJobId]?.Narrative) {
+        if (!projectId || !agentState.project[projectId]?.Strategy) {
           return new ExecutableGameFunctionResponse(
             ExecutableGameFunctionStatus.Failed,
-            "No narrative found to generate avatar from",
+            "No strategy found to generate avatar from",
           );
         }
 
-        const narrativeState = agentState.twitter[twitterJobId].Narrative;
-        if (narrativeState.status !== "COMPLETED") {
+        const strategy = agentState.project[projectId].Strategy;
+        if (strategy.status !== "COMPLETED") {
           return new ExecutableGameFunctionResponse(
             ExecutableGameFunctionStatus.Failed,
-            "Narrative is not yet completed",
+            "Strategy is not yet completed",
           );
         }
 
-        if (!narrativeState.narrative) {
+        if (!strategy.value) {
           return new ExecutableGameFunctionResponse(
             ExecutableGameFunctionStatus.Failed,
-            "Narrative content is missing",
+            "Strategy content is missing",
           );
         }
 
         // Check if avatar already exists
-        if (agentState.twitter[twitterJobId]?.Avatar?.status === "COMPLETED") {
+        if (agentState.project[projectId]?.Avatar?.status === "COMPLETED") {
           return new ExecutableGameFunctionResponse(
             ExecutableGameFunctionStatus.Failed,
             "Avatar has already been generated",
@@ -85,8 +85,7 @@ export const generateAvatar = (acpPlugin: AcpPlugin) =>
           );
         }
 
-        const avatarRecommendations =
-          narrativeState.narrative.avatar_recommendations;
+        const avatarRecommendations = strategy.value.avatar_recommendations;
         const characterVisuals =
           avatarRecommendations.character_visuals.character1;
 
@@ -127,8 +126,8 @@ export const generateAvatar = (acpPlugin: AcpPlugin) =>
         const createResult = (await createResponse.json()) as ApiResponse<{
           project_id: string;
         }>;
-        const projectId = createResult.data.project_id;
-        logger(`Project created successfully with ID: ${projectId}`);
+        const avatarProjectId = createResult.data.project_id;
+        logger(`Project created successfully with ID: ${avatarProjectId}`);
 
         // Wait for 3 minutes to allow for image generation
         logger("Waiting 3 minutes for image generation to complete...");
@@ -137,7 +136,7 @@ export const generateAvatar = (acpPlugin: AcpPlugin) =>
         // Get generated images
         logger(`Fetching generated images for project ${projectId}...`);
         const imagesResponse = await fetch(
-          `https://rbrgqdnnkyrshfhyjeeh.supabase.co/functions/v1/list-generated-images/${projectId}`,
+          `https://rbrgqdnnkyrshfhyjeeh.supabase.co/functions/v1/list-generated-images/${avatarProjectId}`,
           {
             headers: {
               Authorization:
@@ -189,7 +188,7 @@ export const generateAvatar = (acpPlugin: AcpPlugin) =>
         }
 
         // Update the state with the generated avatar
-        await store.setJob(twitterJobId, "Avatar", {
+        await store.setJob(projectId, "Avatar", {
           status: "COMPLETED",
           url: selectedImage.file_path,
           projectId: projectId,

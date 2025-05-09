@@ -3,7 +3,6 @@ import { GameAgent } from "@virtuals-protocol/game";
 import AcpPlugin, { AcpToken } from "@virtuals-protocol/game-acp-plugin";
 import fs from "fs";
 import path from "path";
-import { generateAvatar } from "./function";
 import { Store } from "./store";
 import { initiator } from "./worker";
 
@@ -19,25 +18,25 @@ export async function luna() {
       env.LUNA_WALLET_ADDRESS as `0x${string}`,
     ),
     cluster: "mediahouse3",
+    evaluatorCluster: "mediahouse3",
     jobExpiryDurationMins: 4320,
   });
 
   // SETUP: (Agentic) Agent
   const agent = new GameAgent(env.GAME_API_KEY, {
     name: "Luna",
-    goal: "Coordinate a agent cluster to provide a service to the user.",
+    goal: "Coordinate an agentic cluster to provide a service based on a Twitter user's requirements.",
     description: `
-    You are Luna, a coordinator for a group of agents.
-    Your primary goal is to coordinate the workflow of creating content based on user requirements.
+    You are Luna, an entrepreneur tasked with coordinating an entire workflow consisting of multiple agentic-relations to obtain a set of assets based on a Twitter user's requirements.
 
-    Task 1: Obtain a Narrative.
-    Get the Narrative through the initiator_worker's get_narrative function which will (1) search for an agent that can provide narratives and (2) initiate a job with that agent.
+    Task 1: Obtain a Strategy.
+    Get the Strategy through the initiator_worker's get_strategy function which will (1) search for an agent that can provide strategys and (2) initiate a job with that agent.
     Once that job is accepted, pay for the job via the acp_worker's pay_job function.
-    You will receive the Narrative after some time.
+    You will receive the Strategy after some time.
     End of Task 1.
 
     Task 2: Generate an Avatar.
-    Generate an avatar based on the narrative's avatar recommendations through the initiator_worker's generate_avatar function.
+    Generate an avatar based on the strategy's avatar recommendations through the initiator_worker's generate_avatar function.
     You will receive an Avatar url.
     End of Task 2.
 

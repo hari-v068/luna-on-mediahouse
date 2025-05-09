@@ -5,7 +5,7 @@ import path from "path";
 
 const stateFilePath = path.join(process.cwd(), "src/database/luna.db.json");
 
-type Domain = "User" | "Narrative" | "Avatar" | "Video" | "Meme" | "Asset";
+type Domain = "Twitter" | "Strategy" | "Avatar" | "Video" | "Meme" | "Asset";
 
 interface CompletedJobData {
   tokenName: string;
@@ -83,14 +83,14 @@ export class Store {
     if (!currentState[jobId]) {
       const newUserJob: JobRecord = {
         status: "PENDING",
-        job_details: jobDetails,
+        value: jobDetails,
         wallet_address: walletAddress,
       };
 
       const updatedState = {
         ...currentState,
         [jobId]: {
-          User: newUserJob,
+          Twitter: newUserJob,
         },
       };
 
@@ -110,46 +110,38 @@ export class Store {
     await this.writeState(updatedState);
   }
 
-  async updateNarrativeFromAcp(acpState: any): Promise<void> {
+  async fetchStrategy(acpState: any): Promise<void> {
     const state = await this.readState();
-    const twitterJobId = Object.keys(state)[0];
+    const projectId = Object.keys(state)[0];
 
-    // Find the completed job that matches our stored ACP job ID
-    const completedNarrativeJob = acpState.jobs.completed.find(
+    const completedStrategyJob = acpState.jobs.completed.find(
       (job: { jobId: number }) =>
-        job.jobId === state[twitterJobId].Narrative.acpJobId,
+        job.jobId === state[projectId].Strategy.acpJobId,
     );
 
-    if (completedNarrativeJob) {
-      // Find the json for this specific job in inventory
-      const narrativeJson = acpState.inventory.acquired.find(
+    if (completedStrategyJob) {
+      const strategyJson = acpState.inventory.acquired.find(
         (item: { jobId: number; type: string }) =>
-          item.jobId === completedNarrativeJob.jobId && item.type === "json",
+          item.jobId === completedStrategyJob.jobId && item.type === "json",
       );
 
-      if (narrativeJson) {
-        const narrativeValue = JSON.parse(narrativeJson.value);
-        // Parse the avatar_recommendations string into an object
-        narrativeValue.avatar_recommendations = JSON.parse(
-          narrativeValue.avatar_recommendations,
-        );
-
-        await this.setJob(twitterJobId, "Narrative", {
+      if (strategyJson) {
+        const strategy = JSON.parse(strategyJson.value);
+        await this.setJob(projectId, "Strategy", {
           status: "COMPLETED",
-          narrative: narrativeValue,
+          value: strategy,
         });
       }
     }
   }
 
-  async updateVideoFromAcp(acpState: any): Promise<void> {
+  async fetchVideo(acpState: any): Promise<void> {
     const state = await this.readState();
-    const twitterJobId = Object.keys(state)[0];
+    const projectId = Object.keys(state)[0];
 
     // Find the completed job that matches our stored ACP job ID
     const completedVideoJob = acpState.jobs.completed.find(
-      (job: { jobId: number }) =>
-        job.jobId === state[twitterJobId].Video.acpJobId,
+      (job: { jobId: number }) => job.jobId === state[projectId].Video.acpJobId,
     );
 
     if (completedVideoJob) {
@@ -160,7 +152,7 @@ export class Store {
       );
 
       if (videoUrl) {
-        await this.setJob(twitterJobId, "Video", {
+        await this.setJob(projectId, "Video", {
           status: "COMPLETED",
           url: videoUrl.value,
         });
@@ -168,14 +160,13 @@ export class Store {
     }
   }
 
-  async updateMemeFromAcp(acpState: any): Promise<void> {
+  async fetchMeme(acpState: any): Promise<void> {
     const state = await this.readState();
-    const twitterJobId = Object.keys(state)[0];
+    const projectId = Object.keys(state)[0];
 
     // Find the completed job that matches our stored ACP job ID
     const completedMemeJob = acpState.jobs.completed.find(
-      (job: { jobId: number }) =>
-        job.jobId === state[twitterJobId].Meme.acpJobId,
+      (job: { jobId: number }) => job.jobId === state[projectId].Meme.acpJobId,
     );
 
     if (completedMemeJob) {
@@ -186,7 +177,7 @@ export class Store {
       );
 
       if (memeUrl) {
-        await this.setJob(twitterJobId, "Meme", {
+        await this.setJob(projectId, "Meme", {
           status: "COMPLETED",
           url: memeUrl.value,
         });
@@ -194,14 +185,13 @@ export class Store {
     }
   }
 
-  async updateAssetFromAcp(acpState: any): Promise<void> {
+  async fetchAsset(acpState: any): Promise<void> {
     const state = await this.readState();
-    const twitterJobId = Object.keys(state)[0];
+    const projectId = Object.keys(state)[0];
 
     // Find the completed job that matches our stored ACP job ID
     const completedAssetJob = acpState.jobs.completed.find(
-      (job: { jobId: number }) =>
-        job.jobId === state[twitterJobId].Asset.acpJobId,
+      (job: { jobId: number }) => job.jobId === state[projectId].Asset.acpJobId,
     );
 
     if (completedAssetJob) {
@@ -214,7 +204,7 @@ export class Store {
       if (assetJson) {
         const assetValue = JSON.parse(assetJson.value);
 
-        await this.setJob(twitterJobId, "Asset", {
+        await this.setJob(projectId, "Asset", {
           status: "COMPLETED",
           url: {
             avatar: assetValue.avatar,
@@ -223,9 +213,9 @@ export class Store {
           },
         });
 
-        // Mark the User job as completed since this is the final step
-        await this.setJob(twitterJobId, "User", {
-          ...state[twitterJobId].User,
+        // Mark the Twitter job as completed since this is the final step
+        await this.setJob(projectId, "Twitter", {
+          ...state[projectId].Twitter,
           status: "COMPLETED",
         });
       }
@@ -233,16 +223,16 @@ export class Store {
   }
 
   private async pushCompletedJobToDatabase(
-    twitterJobId: string,
+    projectId: string,
     state: State,
   ): Promise<void> {
-    const job = state[twitterJobId];
+    const job = state[projectId];
     if (!job) return;
 
     const completedJobData: CompletedJobData = {
-      tokenName: job.User.job_details.token_name,
-      narrative: job.Narrative.narrative.narrative,
-      goToMarketStrategy: job.Narrative.narrative.gtm_strategy,
+      tokenName: job.Twitter.value.token_name,
+      narrative: job.Strategy.value.narrative,
+      goToMarketStrategy: job.Strategy.value.gtm_strategy,
       avatarMediaUrl: job.Avatar.url,
       avatarMintingUrl: job.Asset.url.avatar,
       memeMediaUrl: job.Meme.url,
@@ -256,20 +246,20 @@ export class Store {
       .update({
         twitter_completed_job: completedJobData,
       })
-      .eq("twitter_job_id", twitterJobId)
+      .eq("twitter_job_id", projectId)
       .throwOnError();
   }
 
   private async isAllJobsCompleted(
     state: State,
-    twitterJobId: string,
+    projectId: string,
   ): Promise<boolean> {
-    const job = state[twitterJobId];
+    const job = state[projectId];
     if (!job) return false;
 
     const requiredDomains: Domain[] = [
-      "User",
-      "Narrative",
+      "Twitter",
+      "Strategy",
       "Avatar",
       "Video",
       "Meme",
@@ -293,7 +283,7 @@ export class Store {
     }
   }
 
-  async getAgentState(acpPlugin?: any): Promise<{ twitter: State; acp: any }> {
+  async getAgentState(acpPlugin?: any): Promise<{ project: State; acp: any }> {
     const state = await this.readState();
 
     // Only check Supabase if database is empty
@@ -311,52 +301,52 @@ export class Store {
     const acpState = acpPlugin ? await acpPlugin.getAcpState() : {};
 
     if (acpPlugin) {
-      const twitterJobId = Object.keys(state)[0];
+      const projectId = Object.keys(state)[0];
 
-      // Only proceed if we have a user job
-      if (twitterJobId && state[twitterJobId]?.User) {
-        // Only check narrative if we have a pending narrative job
-        if (state[twitterJobId]?.Narrative?.status === "PENDING") {
-          await this.updateNarrativeFromAcp(acpState);
+      // Only proceed if we have a twitter job
+      if (projectId && state[projectId]?.Twitter) {
+        // Only check strategy if we have a pending strategy job
+        if (state[projectId]?.Strategy?.status === "PENDING") {
+          await this.fetchStrategy(acpState);
         }
 
         // Only check video if we have a completed avatar, narrative and pending video job
         if (
-          state[twitterJobId]?.Avatar?.status === "COMPLETED" &&
-          state[twitterJobId]?.Narrative?.status === "COMPLETED" &&
-          state[twitterJobId]?.Video?.status === "PENDING"
+          state[projectId]?.Avatar?.status === "COMPLETED" &&
+          state[projectId]?.Strategy?.status === "COMPLETED" &&
+          state[projectId]?.Video?.status === "PENDING"
         ) {
-          await this.updateVideoFromAcp(acpState);
+          await this.fetchVideo(acpState);
         }
 
         // Only check meme if we have a completed avatar, narrative and pending meme job
         if (
-          state[twitterJobId]?.Avatar?.status === "COMPLETED" &&
-          state[twitterJobId]?.Narrative?.status === "COMPLETED" &&
-          state[twitterJobId]?.Meme?.status === "PENDING"
+          state[projectId]?.Avatar?.status === "COMPLETED" &&
+          state[projectId]?.Strategy?.status === "COMPLETED" &&
+          state[projectId]?.Meme?.status === "PENDING"
         ) {
-          await this.updateMemeFromAcp(acpState);
+          await this.fetchMeme(acpState);
         }
 
         // Only check token if we have completed avatar, video and meme jobs
         if (
-          state[twitterJobId]?.Avatar?.status === "COMPLETED" &&
-          state[twitterJobId]?.Video?.status === "COMPLETED" &&
-          state[twitterJobId]?.Meme?.status === "COMPLETED" &&
-          state[twitterJobId]?.Asset?.status === "PENDING"
+          state[projectId]?.Avatar?.status === "COMPLETED" &&
+          state[projectId]?.Video?.status === "COMPLETED" &&
+          state[projectId]?.Meme?.status === "COMPLETED" &&
+          state[projectId]?.Asset?.status === "PENDING"
         ) {
-          await this.updateAssetFromAcp(acpState);
+          await this.fetchAsset(acpState);
         }
 
-        if (await this.isAllJobsCompleted(state, twitterJobId)) {
-          await this.pushCompletedJobToDatabase(twitterJobId, state);
+        if (await this.isAllJobsCompleted(state, projectId)) {
+          await this.pushCompletedJobToDatabase(projectId, state);
           await this.clearDatabase();
         }
       }
     }
 
     return {
-      twitter: await this.readState(),
+      project: await this.readState(),
       acp: acpState,
     };
   }

@@ -19,7 +19,7 @@ export const initiator = (acpPlugin: AcpPlugin, store: Store) => {
     description:
       "A worker that initiates a job with an agent in the respective domain that's being handled.",
     functions: [
-      getNarrative(acpPlugin, store),
+      getStrategy(acpPlugin, store),
       generateAvatar(acpPlugin),
       getVideo(acpPlugin, store),
       getMeme(acpPlugin, store),
@@ -31,50 +31,50 @@ export const initiator = (acpPlugin: AcpPlugin, store: Store) => {
   });
 };
 
-export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
+export const getStrategy = (acpPlugin: AcpPlugin, store: Store) =>
   new GameFunction({
-    name: "get_narrative",
-    description: "Initiate a job with an agent that provides a narrative.",
+    name: "get_strategy",
+    description: "Initiate a job with an agent that provides a strategy.",
     args: [
       {
         name: "reasoning",
         type: "string",
-        description: "The reasoning for the narrative generation",
+        description: "The reasoning for obtaining a strategy",
       },
     ],
     executable: async (args) => {
       const agentState = await store.getAgentState(acpPlugin);
-      const twitterJobId = Object.keys(agentState.twitter)[0];
+      const projectId = Object.keys(agentState.project)[0];
 
-      if (!twitterJobId || !agentState.twitter[twitterJobId]?.User) {
+      if (!projectId || !agentState.project[projectId]?.Twitter) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
-          "No user job found to process",
+          "No twitter job found to process",
         );
       }
 
-      const narrativeJob = agentState.twitter[twitterJobId]?.Narrative;
-      if (narrativeJob) {
-        if (narrativeJob.status === "PENDING") {
+      const strategyJob = agentState.project[projectId]?.Strategy;
+      if (strategyJob) {
+        if (strategyJob.status === "PENDING") {
           return new ExecutableGameFunctionResponse(
             ExecutableGameFunctionStatus.Failed,
-            "Narrative job is already pending",
+            "Strategy job is already pending",
           );
-        } else if (narrativeJob.status === "COMPLETED") {
+        } else if (strategyJob.status === "COMPLETED") {
           return new ExecutableGameFunctionResponse(
             ExecutableGameFunctionStatus.Failed,
-            "Narrative job is already completed",
+            "Strategy job is already completed",
           );
         }
       }
 
       const initiator = new GameAgent(env.GAME_API_KEY, {
         name: "Luna",
-        goal: "Initiate a job with an agent that provides a narrative based on Twitter job details.",
+        goal: "Initiate a job with an agent that provides a strategy based on Twitter job details.",
         description: `
-        You are an agent that initiates a job with an agent that provides a narrative based on Twitter job details.
+        You are an agent that initiates a job with an agent that provides a strategy based on Twitter job details.
 
-        1. Search for an agent that can create narratives based on Twitter job details using the searchAgents function.
+        1. Search for an agent that can create a strategy based on Twitter job details using the searchAgents function.
         2. Initiate a job with the agent using the initiateJob function.
 
         You should skip the evaluation step and directly initiate a job with the agent. That means;
@@ -145,9 +145,8 @@ export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
 
       await initiator.init();
 
-      const twitterJobDetails =
-        agentState.twitter[twitterJobId].User.job_details;
-      const serviceRequirements = JSON.stringify(twitterJobDetails);
+      const xJobDetails = agentState.project[projectId].Twitter.value;
+      const serviceRequirements = JSON.stringify(xJobDetails);
 
       const currentAcpState = await acpPlugin.getAcpState();
       const currentActiveJobs = currentAcpState.jobs.active.asABuyer || [];
@@ -155,7 +154,7 @@ export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
       await initiator
         .getWorkerById("acp_worker")
         .runTask(
-          `Find an agent that can create narratives` +
+          `Find an agent that can create strategies` +
             `and initiate a job with that agent (Acolyt)` +
             `with requireEvaluator set to true and the evaluatorKeyword set to "evaluator"` +
             `with the following serviceRequirements in valid JSON format: ${serviceRequirements}`,
@@ -179,16 +178,16 @@ export const getNarrative = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      store.setJob(twitterJobId, "Narrative", {
+      store.setJob(projectId, "Strategy", {
         status: "PENDING",
-        narrative: null,
+        value: null,
         acpJobId: newJob.jobId,
       });
 
-      initiator.log(`${initiator.name} has initiated the narrative job`);
+      initiator.log(`${initiator.name} has initiated the strategy job`);
       return new ExecutableGameFunctionResponse(
         ExecutableGameFunctionStatus.Done,
-        "NARRATIVE_JOB_INITIATED",
+        "STRATEGY_JOB_INITIATED",
       );
     },
   });
@@ -197,7 +196,7 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
   new GameFunction({
     name: "get_video",
     description:
-      "Initiate a job with an agent that provides a video based on the narrative.",
+      "Initiate a job with an agent that provides a video based on the strategy.",
     args: [
       {
         name: "reasoning",
@@ -207,26 +206,30 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
     ],
     executable: async (args) => {
       const agentState = await store.getAgentState(acpPlugin);
-      const twitterJobId = Object.keys(agentState.twitter)[0];
+      const projectId = Object.keys(agentState.project)[0];
 
-      if (!twitterJobId || !agentState.twitter[twitterJobId]?.User) {
+      if (!projectId || !agentState.project[projectId]?.Twitter) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
-          "No user job found to process",
+          "No twitter job found to process",
         );
       }
 
-      if (
-        agentState.twitter[twitterJobId]?.Avatar?.status !== "COMPLETED" ||
-        agentState.twitter[twitterJobId]?.Narrative?.status !== "COMPLETED"
-      ) {
+      if (agentState.project[projectId]?.Strategy?.status !== "COMPLETED") {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
-          "Avatar or narrative are not yet completed",
+          "Strategy is yet to be received",
         );
       }
 
-      const videoJob = agentState.twitter[twitterJobId]?.Video;
+      if (agentState.project[projectId]?.Avatar?.status !== "COMPLETED") {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Failed,
+          "Avatar is not yet completed",
+        );
+      }
+
+      const videoJob = agentState.project[projectId]?.Video;
       if (videoJob) {
         if (videoJob.status === "PENDING") {
           return new ExecutableGameFunctionResponse(
@@ -243,11 +246,11 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
 
       const initiator = new GameAgent(env.GAME_API_KEY, {
         name: "Luna",
-        goal: "Initiate a job with an agent that provides a video based on the narrative.",
+        goal: "Initiate a job with an agent that provides a video based on the strategy.",
         description: `
-        You are an agent that initiates a job with an agent that provides a video based on the narrative.
+        You are an agent that initiates a job with an agent that provides a video based on the strategy.
 
-        1. Search for an agent that can create videos based on the narrative using the searchAgents function.
+        1. Search for an agent that can create videos based on the strategy using the searchAgents function.
         2. Initiate a job with the agent using the initiateJob function.
 
         You should skip the evaluation step and directly initiate a job with the agent. That means;
@@ -318,9 +321,9 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
 
       await initiator.init();
 
-      const narrative = agentState.twitter[twitterJobId].Narrative.narrative;
+      const strategy = agentState.project[projectId].Strategy.value;
 
-      const avatar = agentState.twitter[twitterJobId].Avatar;
+      const avatar = agentState.project[projectId].Avatar;
       if (!avatar || avatar.status !== "COMPLETED") {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
@@ -329,8 +332,8 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
       }
 
       const serviceRequirements = JSON.stringify({
-        narrative: narrative.narrative,
-        video_recommendations: narrative.video_recommendations,
+        narrative: strategy.narrative,
+        video_recommendations: strategy.video_recommendations,
         avatar_url: avatar.url,
         avatar_project_id: avatar.projectId,
       });
@@ -366,7 +369,7 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      store.setJob(twitterJobId, "Video", {
+      store.setJob(projectId, "Video", {
         status: "PENDING",
         url: null,
         acpJobId: newJob.jobId,
@@ -384,7 +387,7 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
   new GameFunction({
     name: "get_meme",
     description:
-      "Initiate a job with an agent that provides a meme based on the narrative.",
+      "Initiate a job with an agent that provides a meme based on the strategy.",
     args: [
       {
         name: "reasoning",
@@ -394,26 +397,30 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
     ],
     executable: async (args) => {
       const agentState = await store.getAgentState(acpPlugin);
-      const twitterJobId = Object.keys(agentState.twitter)[0];
+      const projectId = Object.keys(agentState.project)[0];
 
-      if (!twitterJobId || !agentState.twitter[twitterJobId]?.User) {
+      if (!projectId || !agentState.project[projectId]?.Twitter) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
-          "No user job found to process",
+          "No twitter job found to process",
         );
       }
 
-      if (
-        agentState.twitter[twitterJobId]?.Avatar?.status !== "COMPLETED" ||
-        agentState.twitter[twitterJobId]?.Narrative?.status !== "COMPLETED"
-      ) {
+      if (agentState.project[projectId]?.Strategy?.status !== "COMPLETED") {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
-          "Avatar or narrative are not yet completed",
+          "Strategy is yet to be received",
         );
       }
 
-      const memeJob = agentState.twitter[twitterJobId]?.Meme;
+      if (agentState.project[projectId]?.Avatar?.status !== "COMPLETED") {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Failed,
+          "Avatar is not generated yet",
+        );
+      }
+
+      const memeJob = agentState.project[projectId]?.Meme;
       if (memeJob) {
         if (memeJob.status === "PENDING") {
           return new ExecutableGameFunctionResponse(
@@ -430,11 +437,11 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
 
       const initiator = new GameAgent(env.GAME_API_KEY, {
         name: "Luna",
-        goal: "Initiate a job with an agent that provides a meme based on the narrative.",
+        goal: "Initiate a job with an agent that provides a meme based on the strategy.",
         description: `
-        You are an agent that initiates a job with an agent that provides a meme based on the narrative.
+        You are an agent that initiates a job with an agent that provides a meme based on the strategy.
 
-        1. Search for an agent that can create memes based on the narrative using the searchAgents function.
+        1. Search for an agent that can create memes based on the strategy using the searchAgents function.
         2. Initiate a job with the agent using the initiateJob function.
 
         You should skip the evaluation step and directly initiate a job with the agent. That means;
@@ -505,9 +512,9 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
 
       await initiator.init();
 
-      const narrative = agentState.twitter[twitterJobId].Narrative.narrative;
+      const strategy = agentState.project[projectId].Strategy.value;
 
-      const avatar = agentState.twitter[twitterJobId].Avatar;
+      const avatar = agentState.project[projectId].Avatar;
       if (!avatar || avatar.status !== "COMPLETED") {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
@@ -516,7 +523,7 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
       }
 
       const serviceRequirements = JSON.stringify({
-        meme_recommendations: narrative.meme_recommendations,
+        meme_recommendations: strategy.meme_recommendations,
         avatar_url: avatar.url,
         avatar_project_id: avatar.projectId,
       });
@@ -552,7 +559,7 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      store.setJob(twitterJobId, "Meme", {
+      store.setJob(projectId, "Meme", {
         status: "PENDING",
         url: null,
         acpJobId: newJob.jobId,
@@ -580,27 +587,37 @@ export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
     ],
     executable: async (args) => {
       const agentState = await store.getAgentState(acpPlugin);
-      const twitterJobId = Object.keys(agentState.twitter)[0];
+      const projectId = Object.keys(agentState.project)[0];
 
-      if (!twitterJobId || !agentState.twitter[twitterJobId]?.User) {
+      if (!projectId || !agentState.project[projectId]?.Twitter) {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
-          "No user job found to process",
+          "No twitter job found to process",
         );
       }
 
-      if (
-        agentState.twitter[twitterJobId]?.Avatar?.status !== "COMPLETED" ||
-        agentState.twitter[twitterJobId]?.Video?.status !== "COMPLETED" ||
-        agentState.twitter[twitterJobId]?.Meme?.status !== "COMPLETED"
-      ) {
+      if (agentState.project[projectId]?.Avatar?.status !== "COMPLETED") {
         return new ExecutableGameFunctionResponse(
           ExecutableGameFunctionStatus.Failed,
-          "Avatar, video or meme are not yet completed",
+          "Avatar is not yet completed",
         );
       }
 
-      const assetJob = agentState.twitter[twitterJobId]?.Asset;
+      if (agentState.project[projectId]?.Video?.status !== "COMPLETED") {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Failed,
+          "Video is not yet completed",
+        );
+      }
+
+      if (agentState.project[projectId]?.Meme?.status !== "COMPLETED") {
+        return new ExecutableGameFunctionResponse(
+          ExecutableGameFunctionStatus.Failed,
+          "Meme is not yet completed",
+        );
+      }
+
+      const assetJob = agentState.project[projectId]?.Asset;
       if (assetJob) {
         if (assetJob.status === "PENDING") {
           return new ExecutableGameFunctionResponse(
@@ -692,16 +709,16 @@ export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
 
       await initiator.init();
 
-      const video = agentState.twitter[twitterJobId].Video;
-      const meme = agentState.twitter[twitterJobId].Meme;
-      const avatar = agentState.twitter[twitterJobId].Avatar;
-      const user = agentState.twitter[twitterJobId].User;
+      const video = agentState.project[projectId].Video;
+      const meme = agentState.project[projectId].Meme;
+      const avatar = agentState.project[projectId].Avatar;
+      const twitter = agentState.project[projectId].Twitter;
 
       const serviceRequirements = JSON.stringify({
         avatar_url: avatar.url,
         video_url: video.url,
         meme_url: meme.url,
-        user_wallet_address: user.wallet_address,
+        user_wallet_address: twitter.wallet_address,
       });
 
       const currentAcpState = await acpPlugin.getAcpState();
@@ -734,7 +751,7 @@ export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      store.setJob(twitterJobId, "Asset", {
+      store.setJob(projectId, "Asset", {
         status: "PENDING",
         url: null,
         acpJobId: newJob.jobId,
