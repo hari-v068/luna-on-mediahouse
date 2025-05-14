@@ -127,6 +127,9 @@ export class Store {
 
       if (strategyJson) {
         const strategy = JSON.parse(strategyJson.value);
+        strategy.avatar_recommendations = JSON.parse(
+          strategy.avatar_recommendations,
+        );
         await this.setJob(projectId, "Strategy", {
           status: "COMPLETED",
           value: strategy,

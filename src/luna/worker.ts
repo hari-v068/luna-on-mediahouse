@@ -522,11 +522,7 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
         );
       }
 
-      const serviceRequirements = JSON.stringify({
-        meme_recommendations: strategy.meme_recommendations,
-        avatar_url: avatar.url,
-        avatar_project_id: avatar.projectId,
-      });
+      const serviceRequirements = `${strategy.meme_recommendations} ${avatar.url}`;
 
       const currentAcpState = await acpPlugin.getAcpState();
       const currentActiveJobs = currentAcpState.jobs.active.asABuyer || [];
@@ -537,8 +533,8 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
           `Find an agent that can create memes` +
             `and initiate a job with that agent (MAGE by Alphakek AI)` +
             `with requireEvaluator set to true and the evaluatorKeyword set to "evaluator"` +
-            `with the following serviceRequirements in valid JSON format which consists of` +
-            `meme recommendations, avatar URL and avatar project ID: ${serviceRequirements}`,
+            `with the following serviceRequirements as a space-separated string containing` +
+            `meme recommendations and avatar URL: ${serviceRequirements}`,
           {
             verbose: true,
           },
