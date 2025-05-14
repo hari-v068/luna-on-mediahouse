@@ -79,7 +79,6 @@ export class Store {
   ): Promise<void> {
     const currentState = await this.readState();
 
-    // Only add if it doesn't exist
     if (!currentState[jobId]) {
       const newUserJob: JobRecord = {
         status: "PENDING",
@@ -116,7 +115,7 @@ export class Store {
 
     const completedStrategyJob = acpState.jobs.completed.find(
       (job: { jobId: number }) =>
-        job.jobId === state[projectId].Strategy.acpJobId,
+        job.jobId === state[projectId].Strategy.acpRef,
     );
 
     if (completedStrategyJob) {
@@ -131,6 +130,7 @@ export class Store {
           strategy.avatar_recommendations,
         );
         await this.setJob(projectId, "Strategy", {
+          ...state[projectId].Strategy,
           status: "COMPLETED",
           value: strategy,
         });
@@ -142,13 +142,11 @@ export class Store {
     const state = await this.readState();
     const projectId = Object.keys(state)[0];
 
-    // Find the completed job that matches our stored ACP job ID
     const completedVideoJob = acpState.jobs.completed.find(
-      (job: { jobId: number }) => job.jobId === state[projectId].Video.acpJobId,
+      (job: { jobId: number }) => job.jobId === state[projectId].Video.acpRef,
     );
 
     if (completedVideoJob) {
-      // Find the URL for this specific job in inventory
       const videoUrl = acpState.inventory.acquired.find(
         (item: { jobId: number; type: string }) =>
           item.jobId === completedVideoJob.jobId && item.type === "url",
@@ -156,6 +154,7 @@ export class Store {
 
       if (videoUrl) {
         await this.setJob(projectId, "Video", {
+          ...state[projectId].Video,
           status: "COMPLETED",
           url: videoUrl.value,
         });
@@ -167,13 +166,11 @@ export class Store {
     const state = await this.readState();
     const projectId = Object.keys(state)[0];
 
-    // Find the completed job that matches our stored ACP job ID
     const completedMemeJob = acpState.jobs.completed.find(
-      (job: { jobId: number }) => job.jobId === state[projectId].Meme.acpJobId,
+      (job: { jobId: number }) => job.jobId === state[projectId].Meme.acpRef,
     );
 
     if (completedMemeJob) {
-      // Find the URL for this specific job in inventory
       const memeUrl = acpState.inventory.acquired.find(
         (item: { jobId: number; type: string }) =>
           item.jobId === completedMemeJob.jobId && item.type === "url",
@@ -181,6 +178,7 @@ export class Store {
 
       if (memeUrl) {
         await this.setJob(projectId, "Meme", {
+          ...state[projectId].Meme,
           status: "COMPLETED",
           url: memeUrl.value,
         });
@@ -192,22 +190,19 @@ export class Store {
     const state = await this.readState();
     const projectId = Object.keys(state)[0];
 
-    // Find the completed job that matches our stored ACP job ID
     const completedAssetJob = acpState.jobs.completed.find(
-      (job: { jobId: number }) => job.jobId === state[projectId].Asset.acpJobId,
+      (job: { jobId: number }) => job.jobId === state[projectId].Asset.acpRef,
     );
-
     if (completedAssetJob) {
-      // Find the JSON for this specific job in inventory
       const assetJson = acpState.inventory.acquired.find(
         (item: { jobId: number; type: string }) =>
           item.jobId === completedAssetJob.jobId && item.type === "json",
       );
-
       if (assetJson) {
-        const assetValue = JSON.parse(assetJson.value);
+        const assetValue = assetJson.value
 
         await this.setJob(projectId, "Asset", {
+          ...state[projectId].Asset,
           status: "COMPLETED",
           url: {
             avatar: assetValue.avatar,
@@ -216,7 +211,6 @@ export class Store {
           },
         });
 
-        // Mark the Twitter job as completed since this is the final step
         await this.setJob(projectId, "Twitter", {
           ...state[projectId].Twitter,
           status: "COMPLETED",
@@ -289,7 +283,6 @@ export class Store {
   async getAgentState(acpPlugin?: any): Promise<{ project: State; acp: any }> {
     const state = await this.readState();
 
-    // Only check Supabase if database is empty
     if (!state || Object.keys(state).length === 0) {
       const activeJob = await this.getActiveJobFromSupabase();
       if (activeJob) {
@@ -306,14 +299,11 @@ export class Store {
     if (acpPlugin) {
       const projectId = Object.keys(state)[0];
 
-      // Only proceed if we have a twitter job
       if (projectId && state[projectId]?.Twitter) {
-        // Only check strategy if we have a pending strategy job
         if (state[projectId]?.Strategy?.status === "PENDING") {
           await this.fetchStrategy(acpState);
         }
 
-        // Only check video if we have a completed avatar, narrative and pending video job
         if (
           state[projectId]?.Avatar?.status === "COMPLETED" &&
           state[projectId]?.Strategy?.status === "COMPLETED" &&
@@ -322,7 +312,6 @@ export class Store {
           await this.fetchVideo(acpState);
         }
 
-        // Only check meme if we have a completed avatar, narrative and pending meme job
         if (
           state[projectId]?.Avatar?.status === "COMPLETED" &&
           state[projectId]?.Strategy?.status === "COMPLETED" &&
@@ -331,7 +320,6 @@ export class Store {
           await this.fetchMeme(acpState);
         }
 
-        // Only check token if we have completed avatar, video and meme jobs
         if (
           state[projectId]?.Avatar?.status === "COMPLETED" &&
           state[projectId]?.Video?.status === "COMPLETED" &&

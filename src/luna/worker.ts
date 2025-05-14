@@ -180,8 +180,8 @@ export const getStrategy = (acpPlugin: AcpPlugin, store: Store) =>
 
       store.setJob(projectId, "Strategy", {
         status: "PENDING",
+        acpRef: newJob.jobId,
         value: null,
-        acpJobId: newJob.jobId,
       });
 
       initiator.log(`${initiator.name} has initiated the strategy job`);
@@ -335,7 +335,7 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
         narrative: strategy.narrative,
         video_recommendations: strategy.video_recommendations,
         avatar_url: avatar.url,
-        avatar_project_id: avatar.projectId,
+        avatar_id: avatar.id,
       });
 
       const currentAcpState = await acpPlugin.getAcpState();
@@ -371,8 +371,8 @@ export const getVideo = (acpPlugin: AcpPlugin, store: Store) =>
 
       store.setJob(projectId, "Video", {
         status: "PENDING",
+        acpRef: newJob.jobId,
         url: null,
-        acpJobId: newJob.jobId,
       });
 
       initiator.log(`${initiator.name} has initiated the video job`);
@@ -557,8 +557,8 @@ export const getMeme = (acpPlugin: AcpPlugin, store: Store) =>
 
       store.setJob(projectId, "Meme", {
         status: "PENDING",
+        acpRef: newJob.jobId,
         url: null,
-        acpJobId: newJob.jobId,
       });
 
       initiator.log(`${initiator.name} has initiated the meme job`);
@@ -749,8 +749,8 @@ export const getAsset = (acpPlugin: AcpPlugin, store: Store) =>
 
       store.setJob(projectId, "Asset", {
         status: "PENDING",
+        acpRef: newJob.jobId,
         url: null,
-        acpJobId: newJob.jobId,
       });
 
       initiator.log(

@@ -2,11 +2,12 @@ export type JobStatus = "PENDING" | "COMPLETED" | "FAILED";
 
 export type JobRecord = {
   status: JobStatus;
+  acpRef?: number;
   [key: string]: any;
 };
 
 export type State = {
-  [twitterJobId: string]: {
-    [agentName: string]: JobRecord;
+  [project: string]: {
+    [domain: string]: JobRecord;
   };
 };

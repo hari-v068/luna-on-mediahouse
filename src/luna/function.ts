@@ -190,8 +190,8 @@ export const generateAvatar = (acpPlugin: AcpPlugin) =>
         // Update the state with the generated avatar
         await store.setJob(projectId, "Avatar", {
           status: "COMPLETED",
+          id: projectId,
           url: selectedImage.file_path,
-          projectId: projectId,
         });
 
         // Return the selected image details
