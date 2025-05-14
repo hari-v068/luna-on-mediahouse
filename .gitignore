@@ -12,3 +12,6 @@ logs/
 
 # database
 src/database/luna.db.json
+
+# os
+.DS_Store
